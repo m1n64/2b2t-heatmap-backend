@@ -5,7 +5,9 @@
 2b2theatmap.info {
     encode zstd gzip
 
-    reverse_proxy host.docker.internal:3000
+    reverse_proxy host.docker.internal:3000 {
+        dial_timeout 2s
+    }
 }
 
 api.2b2theatmap.info {
