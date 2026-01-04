@@ -22,7 +22,10 @@ services:
       target: prod
     hostname: backend
     volumes:
-      - ./:/app:cached
+      - ./.env:/app/.env
+      - ./data:/app/data
+    env_file:
+      - .env
     environment:
       GIN_MODE: "release"
     restart: unless-stopped

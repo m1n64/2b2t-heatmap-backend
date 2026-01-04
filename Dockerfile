@@ -53,10 +53,9 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o main ./cmd/start/main.go
 
 FROM alpine:latest as prod
 
-RUN apk --no-cache add ca-certificates
+RUN apk --no-cache add ca-certificates harfbuzz freetype ttf-freefont nss
 
-WORKDIR /root/
-
+WORKDIR /app
 COPY --from=builder /app/main .
 
 EXPOSE 8000

@@ -8,6 +8,8 @@ services:
     command: air
     environment:
       GIN_MODE: "debug"
+    volumes:
+      - ./:/app:cached
     ports:
       - "${SERVER_PORT:-8000}:8000"
       - "5864:5864"
