@@ -7,6 +7,6 @@ import (
 func LoadEnv() {
 	err := godotenv.Load()
 	if err != nil {
-		GetLogger().Sugar().Error("Error loading .env file")
+		panic(err)
 	}
 }

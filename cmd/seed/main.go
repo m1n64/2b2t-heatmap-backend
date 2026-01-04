@@ -1,7 +1,7 @@
 package main
 
 import (
-	"golang-service-template/pkg/di"
+	"tbtt-heatmaps-service/pkg/di"
 )
 
 var dependencies *di.Dependencies

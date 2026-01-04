@@ -1,5 +1,5 @@
 # Define container names
-APP_CONTAINER=app
+APP_CONTAINER=backend
 POSTGRES_CONTAINER=db
 REDIS_CONTAINER=redis
 

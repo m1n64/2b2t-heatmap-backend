@@ -1,0 +1,13 @@
+{
+  "version": "1.0",
+  "availableWorlds": ["nether"],
+  "worlds": {
+    "nether": {
+      "minZoom": 0,
+      "maxZoom": 10,
+      "maxNativeZoom": 7,
+      "tileSize": 256,
+      "attribution": "2b2t Heatmap"
+    }
+  }
+}

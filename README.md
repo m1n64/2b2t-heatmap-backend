@@ -1,156 +1,105 @@
-# Golang Service Template
+# 2b2t Heatmaps Service 🗺️
 
-A batteries‑included starter template for building Go microservices.
+A high-performance Tile CDN service designed for 2b2t heatmap data. Built with Go, it serves map tiles from the file
+system with aggressive in-memory caching and smart ETag validation to minimize latency and bandwidth.
 
-**Stack**
+## 🚀 Features
 
-* **Go 1.25**
-* **Gin** (HTTP framework)
-* **Air** (live‑reload during development)
-* **Delve** (remote debugger, runs in dev mode)
-* **PostgreSQL**, **Redis**, **RabbitMQ** (optional deps wired via Docker Compose)
-* **GORM** as the default ORM
-* Dockerfile with **dev** and **prod** stages
-* `make` commands to orchestrate common tasks
-
----
-
-## What’s inside
-
-```
-.
-├── Dockerfile
-├── docker-compose.yml
-├── docker-compose.override.yml     # dev overrides (Air, Delve ports)
-├── cmd
-│   ├── seed/                       # seeds (go run cmd/seed)
-│   └── start/                      # service entrypoint (main)
-├── internal/                       # your internal application code
-├── pkg/                            # shared packages (di, utils, …)
-├── makefile                        # all project automation
-├── README.md
-└── tmp/                            # Air build artifacts
-```
+* **Fast I/O:** Optimized file handling with single-descriptor `Stat` and `Read` operations.
+* **In-Memory Cache:** Powered by **Ristretto** (TinyLFU policy) to prevent RAM exhaustion on budget VPS.
+* **Smart ETagging:** Weak ETag implementation (`W/"size-mtime"`) handles `304 Not Modified` responses before reading
+  file data.
+* **Zero-Config SSL:** Automated Let's Encrypt / ZeroSSL via **Caddy**.
+* **Modern Compression:** Support for **Zstd** and **Gzip** via the edge proxy.
+* **Observability:** Real-time metrics (Cache Hit/Miss, ETag stats) exported via StatsD.
 
 ---
 
-## Prerequisites
+## 🛠️ Tech Stack
 
-* **Docker** and **Docker Compose**
-* **GNU make**
-* (Optional) Go toolchain if you plan to run things outside Docker
-
----
-
-## Getting started
-
-### 1) Use this template
-
-```bash
-git clone https://github.com/m1n64/go-service-template your-service
-cd your-service
-```
-
-### 2) Rename the Go module
-
-Update the module path from the template name to your own module path.
-
-```bash
-sed -i'' -e 's|module golang-service-template|module github.com/your-org/your-service|' go.mod
-```
-
-Update any imports accordingly.
-
-### 3) Set up environment variables
-
-Copy the example environment file and adjust values:
-
-```bash
-cp .env.example .env
-```
-
-Provide credentials for Postgres, Redis, RabbitMQ, etc.
-
-### 4) Run in development (Air + Delve)
-
-In dev mode, the app is started by **Air** and Delve runs in headless debug mode.
-
-```bash
-make up   # starts app + db + redis + rabbitmq with dev overrides
-```
-
-* Service listens on **:8000**
-* Delve listens on **:5864**
+* **Language:** Go 1.25+
+* **Framework:** Gin Gonic
+* **Cache:** Ristretto
+* **Proxy:** Caddy 2
+* **Metrics:** StatsD (VictoriaMetrics compatible), Vector (UDP proxy for VictoriaLogs)
+* **Dev Ops:** Docker, Air (live-reload), Make
 
 ---
 
-## Makefile commands
+## 🚦 API Endpoints
 
-| Command                           | What it does                                                                   |
-|-----------------------------------|--------------------------------------------------------------------------------|
-| `make help`                       | Show all available commands with descriptions.                                 |
-| `make up`                         | Start the full stack in **dev** mode (Air + Delve, Postgres, Redis, RabbitMQ). |
-| `make prod`                       | Build and run the **production** image/container (no Air, no Delve).           |
-| `make stop`                       | Stop running containers without removing them.                                 |
-| `make down`                       | Stop and remove containers, networks, and volumes.                             |
-| `make restart`                    | Restart the entire stack.                                                      |
-| `make restart-container c=<name>` | Restart a single container by name.                                            |
-| `make stop-container c=<name>`    | Stop a single container by name.                                               |
-| `make logs`                       | Tail logs from the app container.                                              |
-| `make bash`                       | Open an interactive shell in the app container.                                |
-| `make seed`                       | Run seeders inside the app container.                                          |
-| `make psql`                       | Open a `psql` shell in the Postgres container.                                 |
-| `make redis`                      | Open a Redis CLI in the Redis container.                                       |
-| `make rabbitmq`                   | Access RabbitMQ CLI or management UI.                                          |
+| Endpoint               | Description               | Parameters                                                                               |
+|------------------------|---------------------------|------------------------------------------------------------------------------------------|
+| `/{world}/{z}/{x}/{y}` | Fetch heatmap tile image  | `world`: nether, ~~overworld~~, ~~end~~<br>`z`: zoom level<br>`x`, `y`: tile coordinates |
+| `/settings`            | Retrieve heatmap settings | None                                                                                     |
 
----
+Example: https://api.2b2theatmap.info/api/nether/3/4/2
 
-## Development details
+--- 
 
-### Air configuration
+## 💻 Development
 
-Air rebuilds to `./tmp/main` and runs Delve in dev mode. Failures prevent running stale binaries.
+1. Prerequisites
+    - Docker & Docker Compose
+    - Make
 
-### Delve configuration
+2. Setup
+    ```bash
+    cp .env.example .env
+    ```
+3. Run with Live-Reload
+    ```bash
+    make up 
+    ```
+    - API: http://localhost:8000
+    - Debugger (Delve): localhost:5864
 
-Runs headless in the container in dev mode:
+--- 
 
-```
-dlv exec ./tmp/main \
-  --continue \
-  --listen=:5864 \
-  --api-version=2 \
-  --log=true \
-  --headless=true \
-  --accept-multiclient
-```
+## ⚡ Performance Logic
 
-Requires:
-
-* `cap_add: [SYS_PTRACE]`
-* `security_opt: ["seccomp=unconfined"]`
-
-### Database and messaging
-
-* **PostgreSQL** via **GORM** (`pkg/utils/db.go`).
-* **Redis** helpers (`pkg/utils/redis.go`).
-* **RabbitMQ** helpers (`pkg/utils/rabbitmq.go`).
+1. **Request Arrival**: Caddy handles SSL and compression.
+2. **ETag Check**: If `If-None-Match` header matches the file's `mtime/size`, the service immediately returns `304 Not Modified`.
+3. **Cache Lookup**: Ristretto checks if tile bytes are in RAM.
+4. **Disk Fallback**: On a cache miss, the file is opened once, read into memory, stored in the cache, and served.
 
 ---
 
-## Troubleshooting
+## 📊 Monitoring & Metrics
 
-* **`exit code 127`**: likely incorrect `full_bin` in Air config.
-* **`Failed to sync logger`**: benign in Docker.
-* **`operation not permitted`** with Delve: ensure correct container capabilities.
-* **glibc/musl mismatch**: build with `CGO_ENABLED=0` or use a glibc image.
+The service exports real-time telemetry to **StatsD** (integrated with VictoriaMetrics/Grafana). This allows for deep visibility into both application performance and CDN efficiency.
 
----
+### HTTP Traffic & Load
+* `http.requests.total` - Total incoming requests counter.
+* `http.responses.total` - Total responses sent.
+* `http.inflight` - **Gauge** of active requests currently being processed. Critical for monitoring server saturation.
+* `http.responses.status.{code}` - Response counter partitioned by HTTP status (e.g., `200`, `304`, `404`, `500`).
+* `http.errors.total` - Counter for all requests with status code `>= 400`.
+* `http.duration_ms` - Histogram of request processing times in milliseconds.
+* `http.duration_micros` - Histogram of request processing times in microseconds.
 
-## License
+### CDN & Cache Efficiency
+* `cache.hit` / `cache.miss`: Tracks **Ristretto** performance. A high hit ratio indicates optimal RAM utilization.
+* `etag.hit` / `etag.miss`: Tracks **304 Not Modified** efficiency. High hit rates mean clients are successfully using local browser caches, saving your server's bandwidth.
+* `cache.cost_bytes`: Gauge of current RAM consumption by the tile cache.
 
-This project is licensed under the terms of the **LICENSE** file.
+### Health Indicators
+* `http.request.400.*`: Malformed requests (invalid coordinates or world names).
+* `http.request.500.*`: Server-side issues (file system errors or crashes).
 
----
+### Go Runtime & System (Collector)
+* `cpu.percent` - CPU usage by the service process.
+* `mem.rss_bytes` - Resident Set Size (actual RAM used by the process).
+* `go.heap_alloc_bytes` / `go.heap_sys_bytes` - Go-specific memory management stats.
+* `go.gc_pause_ns` - GC pause duration (crucial for latency-sensitive tile serving).
+* `go.goroutines` / `go.threads` - Concurrency and scheduler health.
+* `go.uptime_sec` - Total service uptime.
 
-Happy shipping! 🚀
+--- 
+
+## 🔗 Links
+
+* [Monitoring Repository](https://github.com/m1n64/2b2t-heatmap-monitoring) *Currently private*
+* [2b2t Heatmaps Website](https://2b2theatmap.info)
+* [2b2t Heatmaps API](https://api.2b2theatmap.info)
+* [2b2t Heatmaps Data Source (nocom data)](https://github.com/nerdsinspace/nocom-explanation/blob/main/README.md)

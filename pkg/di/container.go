@@ -1,36 +1,69 @@
 package di
 
 import (
+	"github.com/alexcesaro/statsd"
+	"github.com/dgraph-io/ristretto"
 	"github.com/go-playground/validator/v10"
-	"github.com/go-redis/redis/v8"
 	"go.uber.org/zap"
-	"golang-service-template/pkg/utils"
-	"gorm.io/gorm"
 	"os"
+	"tbtt-heatmaps-service/internal/config/settings"
+	cache2 "tbtt-heatmaps-service/pkg/cache"
+	"tbtt-heatmaps-service/pkg/logging"
+	"tbtt-heatmaps-service/pkg/metrics"
+	"tbtt-heatmaps-service/pkg/utils"
 )
 
 type Dependencies struct {
-	Logger    *zap.Logger
-	Redis     *redis.Client
-	DB        *gorm.DB
-	Validator *validator.Validate
+	Logger          *zap.Logger
+	Cache           *ristretto.Cache
+	StatsD          *statsd.Client
+	SystemCollector *metrics.SystemCollector
+	Validator       *validator.Validate
+	Settings        *settings.Settings
 }
 
 func InitDependencies() *Dependencies {
 	// Infrastructure
-	logger := utils.InitLogs()
 	utils.LoadEnv()
-	redisConn := utils.CreateRedisConn(os.Getenv("REDIS_HOST"), os.Getenv("REDIS_PORT"))
-	dbConn := utils.InitDBConnection(os.Getenv("DB_HOST"), os.Getenv("DB_USER"), os.Getenv("DB_PASS"), os.Getenv("DB_NAME"), os.Getenv("DB_PORT"))
 
-	utils.InitMigrations(dbConn)
+	vectorAddr := os.Getenv("VECTOR_ADDRESS")
+	logger, err := logging.InitLogs("tiles-backend-service", vectorAddr)
+	if err != nil {
+		panic(err)
+	}
+
+	statsdAddr := os.Getenv("VMAGENT_ADDRESS")
+	metricsClient, err := metrics.NewStatsDClient(statsdAddr)
+	if err != nil {
+		panic(err)
+	}
+
+	systemCollector, err := metrics.NewSystemCollector(metricsClient)
+	if err != nil {
+		panic(err)
+	}
 
 	validate := utils.InitValidator()
 
+	cache, err := cache2.NewRistrettoCache()
+	if err != nil {
+		logger.Fatal("failed to initialize cache", zap.Error(err))
+	}
+
+	cfg, err := settings.LoadFromFile("data/settings.json")
+	if err != nil {
+		logger.Fatal("failed to load settings.json", zap.Error(err))
+		panic(err)
+	}
+
+	logger.Info("Dependencies initialized")
+
 	return &Dependencies{
-		Logger:    logger,
-		Redis:     redisConn,
-		DB:        dbConn,
-		Validator: validate,
+		Logger:          logger,
+		Cache:           cache,
+		StatsD:          metricsClient,
+		SystemCollector: systemCollector,
+		Validator:       validate,
+		Settings:        cfg,
 	}
 }

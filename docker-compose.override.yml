@@ -1,17 +1,13 @@
 services:
-  app:
+  caddy:
+    ports: !reset []
+
+  backend:
     build:
       target: dev
     command: air
     environment:
       GIN_MODE: "debug"
     ports:
+      - "${SERVER_PORT:-8000}:8000"
       - "5864:5864"
-
-  db:
-    ports:
-      - "5432:5432"
-
-  redis:
-    ports:
-      - "6379:6379"
