@@ -11,7 +11,7 @@ POSTGRES_DB=$(shell grep POSTGRES_DB .env | cut -d '=' -f2)
 POSTGRES_USER=$(shell grep POSTGRES_USER .env | cut -d '=' -f2)
 POSTGRES_PASSWORD=$(shell grep POSTGRES_PASSWORD .env | cut -d '=' -f2)
 
-.PHONY: help up prod stop down restart restart-container stop-container logs bash seed psql redis
+.PHONY: help up prod prod-build stop down restart restart-container stop-container logs bash seed psql redis
 
 ## 📜 Display all available commands
 help:
@@ -21,6 +21,7 @@ help:
 	@echo "💻  Start environment:"
 	@echo "  make up             - Start the DEV environment"
 	@echo "  make prod           - Start the PROD environment"
+	@echo "  make prod-build     - Build and Start the PROD environment"
 	@echo ""
 	@echo "🛑  Stop and manage containers:"
 	@echo "  make stop           - Stop all containers"
@@ -49,6 +50,10 @@ up:
 
 ## 💻 Start the PROD environment (without override)
 prod:
+	docker-compose -f docker-compose.yml up -d
+
+## 💻 Build the PROD environment (without override)
+prod-build:
 	docker-compose -f docker-compose.yml up -d --build
 
 ## 🛑 Stop all running containers
