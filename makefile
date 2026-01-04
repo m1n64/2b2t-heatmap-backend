@@ -49,7 +49,7 @@ up:
 
 ## 💻 Start the PROD environment (without override)
 prod:
-	docker-compose -f docker-compose.yml up -d
+	docker-compose -f docker-compose.yml up -d --build
 
 ## 🛑 Stop all running containers
 stop:
