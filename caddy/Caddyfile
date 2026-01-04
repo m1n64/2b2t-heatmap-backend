@@ -6,7 +6,9 @@
     encode zstd gzip
 
     reverse_proxy host.docker.internal:3000 {
-        dial_timeout 2s
+        transport http {
+            dial_timeout 2s
+        }
     }
 }
 
