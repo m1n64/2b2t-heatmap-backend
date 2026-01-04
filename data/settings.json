@@ -1,12 +1,20 @@
 {
-  "version": "1.0",
+  "version": "1.0.1",
   "availableWorlds": ["nether"],
   "worlds": {
     "nether": {
+      "bounds": [
+        [-30000, -30000],
+        [30000, 30000]
+      ],
       "minZoom": 0,
       "maxZoom": 10,
+      "minNativeZoom": 0,
       "maxNativeZoom": 7,
+      "zoomDelta": 1,
+      "zoomSnap": 1,
       "tileSize": 256,
+      "noWrap": true,
       "attribution": "2b2t Heatmap"
     }
   }

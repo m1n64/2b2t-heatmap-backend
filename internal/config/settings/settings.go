@@ -3,11 +3,16 @@ package settings
 import "tbtt-heatmaps-service/internal/enums"
 
 type WorldSettings struct {
-	MinZoom       int    `json:"minZoom"`
-	MaxZoom       int    `json:"maxZoom"`
-	MaxNativeZoom int    `json:"maxNativeZoom"`
-	TileSize      int    `json:"tileSize"`
-	Attribution   string `json:"attribution,omitempty"`
+	Bounds        [][]int `json:"bounds"`
+	MinZoom       int     `json:"minZoom"`
+	MaxZoom       int     `json:"maxZoom"`
+	MinNativeZoom int     `json:"minNativeZoom"`
+	MaxNativeZoom int     `json:"maxNativeZoom"`
+	ZoomDelta     int     `json:"zoomDelta"`
+	ZoomSnap      int     `json:"zoomSnap"`
+	TileSize      int     `json:"tileSize"`
+	NoWrap        bool    `json:"noWrap"`
+	Attribution   string  `json:"attribution,omitempty"`
 }
 
 type Settings struct {

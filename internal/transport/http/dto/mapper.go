@@ -9,7 +9,12 @@ func MapSettings(cfg *settings.Settings) SettingsResponse {
 		worlds[w.String()] = WorldSettingsResponse{
 			MinZoom:       s.MinZoom,
 			MaxZoom:       s.MaxZoom,
+			MinNativeZoom: s.MinNativeZoom,
 			MaxNativeZoom: s.MaxNativeZoom,
+			ZoomDelta:     s.ZoomDelta,
+			ZoomSnap:      s.ZoomSnap,
+			NoWrap:        s.NoWrap,
+			Bounds:        s.Bounds,
 			TileSize:      s.TileSize,
 			Attribution:   s.Attribution,
 		}
