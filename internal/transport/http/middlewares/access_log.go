@@ -4,6 +4,7 @@ import (
 	"github.com/alexcesaro/statsd"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
+	"net/http"
 	"strconv"
 	"sync/atomic"
 	"tbtt-heatmaps-service/pkg/logging"
@@ -31,9 +32,9 @@ func AccessLogMiddleware(base *zap.Logger, stats *statsd.Client) gin.HandlerFunc
 
 		var loggerFn func(msg string, fields ...zap.Field)
 		switch {
-		case statusCode >= 500:
+		case statusCode >= http.StatusInternalServerError:
 			loggerFn = log.Error
-		case statusCode >= 400:
+		case statusCode >= http.StatusBadRequest:
 			loggerFn = log.Warn
 		default:
 			loggerFn = log.Info
@@ -74,9 +75,11 @@ func AccessLogMiddleware(base *zap.Logger, stats *statsd.Client) gin.HandlerFunc
 			"http.responses.status." + strconv.Itoa(statusCode),
 		)
 
-		if statusCode >= 400 {
-			stats.Increment("http.errors.total")
+		if statusCode >= http.StatusBadRequest {
 			fields = append(fields, zap.String("user_agent", c.Request.UserAgent()))
+		}
+		if statusCode >= http.StatusInternalServerError {
+			stats.Increment("http.errors.total")
 		}
 
 		loggerFn(message, fields...)
