@@ -88,10 +88,9 @@ func (h *TileHandler) TileHandle(c *gin.Context) {
 	}
 
 	if val, ok := h.cache.Get(path); ok {
-		h.stats.Increment("cache.hit")
-
 		tile := val.(*CachedTile)
 		h.handleETag(c, tile.ETag, func() {
+			h.stats.Increment("cache.hit")
 			h.respondTile(c, tile.ETag, tile.Data)
 		})
 		return
