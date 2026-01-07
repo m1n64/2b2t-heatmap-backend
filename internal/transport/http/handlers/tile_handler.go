@@ -10,11 +10,11 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"tbtt-heatmaps-service/internal/config/settings"
 	"tbtt-heatmaps-service/internal/enums"
 	"tbtt-heatmaps-service/internal/transport/http/dto"
+	"tbtt-heatmaps-service/internal/transport/http/httpx"
 	"tbtt-heatmaps-service/pkg/logging"
 )
 
@@ -51,12 +51,12 @@ func (h *TileHandler) TileHandle(c *gin.Context) {
 		return
 	}
 
-	zStr := c.Param("z")
-	z, err := strconv.Atoi(zStr)
-	if err != nil {
+	z, ok := httpx.ParamInt(c, "z")
+	if !ok {
 		c.Status(http.StatusBadRequest)
 		return
 	}
+	zStr := c.Param("z")
 
 	worldCfg := h.settings.Worlds[world]
 	if z < worldCfg.MinZoom || z > worldCfg.MaxNativeZoom {
@@ -65,21 +65,22 @@ func (h *TileHandler) TileHandle(c *gin.Context) {
 	}
 
 	x, y := c.Param("x"), c.Param("y")
-	if !isInt(x) || !isInt(y) {
-		c.Status(http.StatusBadRequest)
-		return
-	}
+
+	log := logging.FromContext(c.Request.Context(), h.logger)
 
 	baseDir := filepath.Join("data", "tiles")
-	path := filepath.Clean(filepath.Join(
+	path, ok := httpx.SafeJoin(
 		baseDir,
 		world.String(),
 		zStr,
 		x,
 		y+".png",
-	))
-
-	log := logging.FromContext(c.Request.Context(), h.logger)
+	)
+	if !ok {
+		log.Warn("invalid tile path")
+		c.Status(http.StatusBadRequest)
+		return
+	}
 
 	if !strings.HasPrefix(path, baseDir+string(os.PathSeparator)) {
 		log.Warn("invalid tile path", zap.String("path", path))
@@ -89,10 +90,20 @@ func (h *TileHandler) TileHandle(c *gin.Context) {
 
 	if val, ok := h.cache.Get(path); ok {
 		tile := val.(*CachedTile)
-		h.handleETag(c, tile.ETag, func() {
-			h.stats.Increment("cache.hit")
-			h.respondTile(c, tile.ETag, tile.Data)
-		})
+
+		h.stats.Increment("cache.hit")
+
+		if httpx.HandleETag(c, tile.ETag, httpx.ETagHandler{
+			OnHit: func() {
+				h.stats.Increment("etag.hit")
+			},
+			OnMiss: func() {
+				h.stats.Increment("etag.miss")
+				h.respondTile(c, tile.ETag, tile.Data)
+			},
+		}) {
+			return
+		}
 		return
 	}
 
@@ -119,12 +130,16 @@ func (h *TileHandler) TileHandle(c *gin.Context) {
 
 	etag := fmt.Sprintf(`W/"%x-%x"`, info.Size(), info.ModTime().Unix())
 
-	if c.GetHeader("If-None-Match") == etag {
-		h.stats.Increment("etag.hit")
-		c.Status(http.StatusNotModified)
+	if httpx.HandleETag(c, etag, httpx.ETagHandler{
+		OnHit: func() {
+			h.stats.Increment("etag.hit")
+		},
+		OnMiss: func() {
+			h.stats.Increment("etag.miss")
+		},
+	}) {
 		return
 	}
-	h.stats.Increment("etag.miss")
 
 	data, err := io.ReadAll(f)
 	if err != nil {
@@ -145,28 +160,18 @@ func (h *TileHandler) TileHandle(c *gin.Context) {
 func (h *TileHandler) SettingsHandle(c *gin.Context) {
 	etag := fmt.Sprintf(`W/"settings-%s"`, h.settings.Version)
 
-	h.handleETag(c, etag, func() {
-		resp := dto.MapSettings(h.settings)
-
-		c.Header("Cache-Control", "public, max-age=3600")
-		c.JSON(http.StatusOK, resp)
-	})
-}
-
-func (h *TileHandler) handleETag(
-	c *gin.Context,
-	etag string,
-	onMiss func(),
-) {
-	if c.GetHeader("If-None-Match") == etag {
-		h.stats.Increment("etag.hit")
-		c.Status(http.StatusNotModified)
+	if httpx.HandleETag(c, etag, httpx.ETagHandler{
+		OnHit: func() {
+			h.stats.Increment("etag.hit")
+		},
+		OnMiss: func() {
+			h.stats.Increment("etag.miss")
+			httpx.SetStaticCache(c, 3600)
+			c.JSON(http.StatusOK, dto.MapSettings(h.settings))
+		},
+	}) {
 		return
 	}
-
-	h.stats.Increment("etag.miss")
-	c.Header("ETag", etag)
-	onMiss()
 }
 
 func (h *TileHandler) respondTile(
@@ -175,7 +180,7 @@ func (h *TileHandler) respondTile(
 	data []byte,
 ) {
 	c.Header("ETag", etag)
-	h.setStaticHeaders(c)
+	httpx.SetStaticCache(c, 86400)
 	c.Data(http.StatusOK, "image/png", data)
 }
 
@@ -186,13 +191,4 @@ func (h *TileHandler) storeInCache(path string, tile *CachedTile) {
 	h.stats.Increment("cache.set")
 	h.stats.Gauge("cache.cost_bytes", float64(cost))
 	h.stats.Gauge("cache.items", float64(h.cache.Metrics.KeysAdded()))
-}
-
-func (h *TileHandler) setStaticHeaders(c *gin.Context) {
-	c.Header("Cache-Control", "public, max-age=86400")
-}
-
-func isInt(v string) bool {
-	_, err := strconv.Atoi(v)
-	return err == nil
 }

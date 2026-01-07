@@ -7,6 +7,7 @@ import (
 	"go.uber.org/zap"
 	"os"
 	"tbtt-heatmaps-service/internal/config/settings"
+	"tbtt-heatmaps-service/internal/highways"
 	cache2 "tbtt-heatmaps-service/pkg/cache"
 	"tbtt-heatmaps-service/pkg/logging"
 	"tbtt-heatmaps-service/pkg/metrics"
@@ -20,6 +21,7 @@ type Dependencies struct {
 	SystemCollector *metrics.SystemCollector
 	Validator       *validator.Validate
 	Settings        *settings.Settings
+	HighwayService  *highways.HighwayService
 }
 
 func InitDependencies() *Dependencies {
@@ -56,6 +58,10 @@ func InitDependencies() *Dependencies {
 		panic(err)
 	}
 
+	highwayGenerator := highways.NewHighwayGenerator()
+	projector := highways.NewDefaultProjector()
+	highwayService := highways.NewHighwayService(highwayGenerator, projector)
+
 	logger.Info("Dependencies initialized")
 
 	return &Dependencies{
@@ -65,5 +71,6 @@ func InitDependencies() *Dependencies {
 		SystemCollector: systemCollector,
 		Validator:       validate,
 		Settings:        cfg,
+		HighwayService:  highwayService,
 	}
 }
