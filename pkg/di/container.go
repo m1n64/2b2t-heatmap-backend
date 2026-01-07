@@ -40,18 +40,17 @@ func InitDependencies() *Dependencies {
 		panic(err)
 	}
 
-	systemCollector, err := metrics.NewSystemCollector(metricsClient)
-	if err != nil {
-		panic(err)
-	}
-
-	validate := utils.InitValidator()
-
 	cache, err := cache2.NewRistrettoCache()
 	if err != nil {
 		logger.Fatal("failed to initialize cache", zap.Error(err))
 	}
 
+	systemCollector, err := metrics.NewSystemCollector(metricsClient, cache)
+	if err != nil {
+		panic(err)
+	}
+
+	validate := utils.InitValidator()
 	cfg, err := settings.LoadFromFile("data/settings.json")
 	if err != nil {
 		logger.Fatal("failed to load settings.json", zap.Error(err))
