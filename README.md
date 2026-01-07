@@ -28,10 +28,12 @@ system with aggressive in-memory caching and smart ETag validation to minimize l
 
 ## 🚦 API Endpoints
 
-| Endpoint               | Description               | Parameters                                                                               |
-|------------------------|---------------------------|------------------------------------------------------------------------------------------|
-| `/{world}/{z}/{x}/{y}` | Fetch heatmap tile image  | `world`: nether, ~~overworld~~, ~~end~~<br>`z`: zoom level<br>`x`, `y`: tile coordinates |
-| `/settings`            | Retrieve heatmap settings | None                                                                                     |
+| Endpoint                     | Description               | Parameters                                                                               |
+|------------------------------|---------------------------|------------------------------------------------------------------------------------------|
+| `/{world}/{z}/{x}/{y}`       | Fetch heatmap tile image  | `world`: nether, ~~overworld~~, ~~end~~<br>`z`: zoom level<br>`x`, `y`: tile coordinates |
+| `/settings`                  | Retrieve heatmap settings | None                                                                                     |
+| `/{world}/highways/geo-json` | Get highways GeoJSON data | None                                                                                     |
+| **TODO** `/health`           | Health check endpoint     | None                                                                                     |
 
 Example: https://api.2b2theatmap.info/api/nether/3/4/2
 
