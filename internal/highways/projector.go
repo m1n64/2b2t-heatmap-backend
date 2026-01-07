@@ -1,5 +1,7 @@
 package highways
 
+const WorldCollisionCoefficient = 0.000165
+
 type FeatureCollection struct {
 	Type     string    `json:"type"`
 	Features []Feature `json:"features"`
@@ -24,6 +26,7 @@ type Projector struct {
 	McMin, McMax       float64
 	WorldMin, WorldMax float64
 	scaleFactor        float64
+	centerOffset       float64
 }
 
 func NewDefaultProjector() *Projector {
@@ -34,6 +37,7 @@ func NewDefaultProjector() *Projector {
 		WorldMax: 30000,
 	}
 	p.scaleFactor = (p.WorldMax - p.WorldMin) / (p.McMax - p.McMin)
+	p.centerOffset = (p.McMax - p.McMin) / 2
 	return p
 }
 

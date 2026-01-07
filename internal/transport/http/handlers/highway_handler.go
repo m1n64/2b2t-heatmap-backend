@@ -70,6 +70,7 @@ func (h *HighwayHandler) Handle(c *gin.Context) {
 	}
 
 	h.cache.Set(cacheKey, data, int64(len(data.Features))*256)
+	h.stats.Increment("cache.set")
 
 	httpx.SetStaticCache(c, 86400) // 1 week
 	c.JSON(200, data)
